@@ -1,16 +1,23 @@
-﻿using System;
+﻿using Microsoft.OpenApi.Readers;
+using MobileComms_ITK.JSON.Types;
+using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
-namespace Classes.IntegrationToolkit
+namespace MobileComms_ITK.REST
 {
+
     public class REST
     {
-        public enum REST_ACTIONS
+
+
+        public enum Actions
         {
             GET,
             PUT,
@@ -19,174 +26,229 @@ namespace Classes.IntegrationToolkit
             STREAM
         }
 
-        public Dictionary<string, List<string>> Commands { get; } = new Dictionary<string, List<string>>()
+        public class Command
         {
-            {"DataStoreItem_GET", new List<string>()
-        {
-            "/DataStoreItem/ByKey/{namekey}",
-            "/DataStoreItem/UpdatedSince?sinceTime={ms}",
-            "/DataStoreItem/BySource/{Source}",
-            "/DataStoreItem/ByItemName/{ItemName}",
-            "/DataStoreItem/ByType/{Type}",
-            "/DataStoreItem/ByDisplayName/{DisplayName}",
-            "/DataStoreItem/ByGroupName/{GroupName}",
-            "/DataStoreItem/ByCategory/{Category}"
+            public Type JSONType { get; set; }
+            public string TypeName { get; set; }
+            public Actions Action { get; set; }
+            public List<string> Resources { get; set; }
+        }
 
-        }},
-            {"DataStoreValue_GET", new List<string>()
+        public List<Command> Commands { get; } = new List<Command>()
+        {
+            { new Command() { Action = Actions.GET, TypeName = "DataStoreItem", JSONType = typeof(DataStoreItem), Resources = new List<string>()
+                {
+                    "/DataStoreItem/ByKey/{namekey}",
+                    "/DataStoreItem/UpdatedSince?sinceTime={ms}",
+                    "/DataStoreItem/BySource/{Source}",
+                    "/DataStoreItem/ByItemName/{ItemName}",
+                    "/DataStoreItem/ByType/{Type}",
+                    "/DataStoreItem/ByDisplayName/{DisplayName}",
+                    "/DataStoreItem/ByGroupName/{GroupName}",
+                    "/DataStoreItem/ByCategory/{Category}"
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "DataStoreValue", JSONType = typeof(DataStoreValue), Resources = new List<string>()
                 {
                     "/DataStoreValue/ByKey/{namekey}",
                     "/DataStoreValue/UpdatedSince?sinceTime={ms}",
+                }
+            } },
+            { new Command() { Action = Actions.STREAM, TypeName = "DataStoreValue", JSONType = typeof(DataStoreValue), Resources = new List<string>()
+                {
                     "/DataStoreValue/Stream",
-                }},
-            {"DataStoreValueLatest_GET", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "DataStoreValueLatest", JSONType = typeof(DataStoreValue), Resources = new List<string>()
                 {
                     "/DataStoreValueLatest/{DataStore item name}",
                     "/DataStoreValueLatest/{DataStore item name}:{AMR name}",
                     "/DataStoreValueLatest/{DataStore item name}:*",
-                }},
-
-            {"Subscription_GET", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "SubscriptionConfig", JSONType = typeof(SubscriptionConfig), Resources = new List<string>()
                 {
                     "/SubscriptionConfig/ByKey/{namekey}",
                     "/SubscriptionConfig/UpdatedSince?sinceTime={ms}",
+                }
+            } },
+            { new Command() { Action = Actions.STREAM, TypeName = "SubscriptionConfig", JSONType = typeof(SubscriptionConfig), Resources = new List<string>()
+                {
                     "/SubscriptionConfig/Stream",
-                }},
-            {"Subscription_PUT", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.PUT, TypeName = "SubscriptionConfig", JSONType = typeof(SubscriptionConfig_PUT), Resources = new List<string>()
                 {
                     "/SubscriptionConfig",
-                }},
-
-            {"Pickup_GET", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "Pickup", JSONType = typeof(Pickup), Resources = new List<string>()
                 {
                     "/Pickup/UpdatedSince?sinceTime={time millis}",
-                    "/Pickup/Stream",
                     "/Pickup/ByKey/{namekey}",
                     "/Pickup/ByJobId/{JobId}",
                     "/Pickup/ByStatus/{Status}",
                     "/Pickup/ByAssignedJobId/{AssignedJobId}",
-                }},
-            {"Pickup_POST", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.STREAM, TypeName = "Pickup", JSONType = typeof(Pickup), Resources = new List<string>()
+                {
+                    "/Pickup/Stream",
+                }
+            } },
+            { new Command() { Action = Actions.POST, TypeName = "Pickup", JSONType = typeof(Pickup_POST), Resources = new List<string>()
                 {
                     "/Pickup",
-                }},
-            {"Pickup_DELETE", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.DELETE, TypeName = "Pickup", JSONType = typeof(Pickup), Resources = new List<string>()
                 {
                     "/Pickup/{namekey}",
-                }},
-
-            {"PickupDropoff_GET", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "PickupDropoff", JSONType = typeof(PickupDropoff), Resources = new List<string>()
                 {
                     "/PickupDropoff/UpdatedSince?sinceTime={time millis}",
-                    "/PickupDropoff/Stream",
                     "/PickupDropoff/ByKey/{namekey}",
                     "/PickupDropoff/ByJobId/{JobId}",
                     "/PickupDropoff/ByStatus/{Status}",
                     "/PickupDropoff/ByAssignedJobId/{AssignedJobId}",
-                }},
-            {"PickupDropoff_POST", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.STREAM, TypeName = "PickupDropoff", JSONType = typeof(PickupDropoff), Resources = new List<string>()
+                {
+                    "/PickupDropoff/Stream",
+                }
+            } },
+            { new Command() { Action = Actions.POST, TypeName = "PickupDropoff", JSONType = typeof(PickupDropoff_POST), Resources = new List<string>()
                 {
                     "/PickupDropoff",
-                }},
-            {"PickupDropoff_DELETE", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.DELETE, TypeName = "PickupDropoff", JSONType = typeof(PickupDropoff), Resources = new List<string>()
                 {
                     "/PickupDropoff/{namekey}",
-                }},
-
-            {"Dropoff_GET", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "Dropoff", JSONType = typeof(Dropoff), Resources = new List<string>()
                 {
                     "/Dropoff/UpdatedSince?sinceTime={time millis}",
-                    "/Dropoff/Stream",
                     "/Dropoff/ByKey/{namekey}",
                     "/Dropoff/ByJobId/{JobId}",
                     "/Dropoff/ByStatus/{Status}",
                     "/Dropoff/ByAssignedJobId/{AssignedJobId}",
                     "/Dropoff/ByRobot/{AMR}"
-                }},
-            {"Dropoff_POST", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.STREAM, TypeName = "Dropoff", JSONType = typeof(Dropoff), Resources = new List<string>()
+                {
+                    "/Dropoff/Stream",
+                }
+            } },
+            { new Command() { Action = Actions.POST, TypeName = "Dropoff", JSONType = typeof(Dropoff_POST), Resources = new List<string>()
                 {
                     "/Dropoff",
-                }},
-
-            {"JobRequest_GET", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "JobRequest", JSONType = typeof(JobRequest), Resources = new List<string>()
                 {
                     "/JobRequest/UpdatedSince?sinceTime={time millis}",
-                    "/JobRequest/Stream",
                     "/JobRequest/ByKey/{namekey}",
                     "/JobRequest/ByJobId/{JobId}",
                     "/JobRequest/ByStatus/{Status}",
                     "/JobRequest/ByAssignedJobId/{AssignedJobId}",
-                }},
-            {"JobRequest_POST", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.STREAM, TypeName = "JobRequest", JSONType = typeof(JobRequest), Resources = new List<string>()
+                {
+                    "/JobRequest/Stream",
+                }
+            } },
+            { new Command() { Action = Actions.POST, TypeName = "JobRequest", JSONType = typeof(JobRequest_POST), Resources = new List<string>()
                 {
                     "/JobRequest",
-                }},
-            {"JobRequest_DELETE", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.DELETE, TypeName = "JobRequest", JSONType = typeof(JobRequest), Resources = new List<string>()
                 {
                     "/JobRequest/{namekey}",
-                }},
-
-            {"JobRequestDetail_GET", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "JobRequestDetail", JSONType = typeof(JobRequestDetail), Resources = new List<string>()
                 {
                     "/JobRequestDetail/ByKey/{namekey}",
                     "/JobRequestDetail/UpdatedSince?sinceTime={time millis}",
                     "/JobRequestDetail/ByJobRequest/{JobRequestnamekey}",
-                }},
-
-            {"JobMonitoring_GET", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "Job", JSONType = typeof(Job), Resources = new List<string>()
                 {
                     "/Job/ByKey/{namekey}",
                     "/Job/UpdatedSince?sinceTime={time millis}",
-                    "/Job/Stream",
                     "/Job/History?sinceTime={time millis}",
                     "/Job/History?sinceTime={time millis}&namekey={namekey}",
                     "/Job/ByJobId/{JobId}",
                     "/Job/ByLastAssignedRobot/{LastAssignedRobot}",
                     "/Job/ByStatus/{Status}",
-                }},
-            {"JobSegmentMonitoring_GET", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.STREAM, TypeName = "Job", JSONType = typeof(Job), Resources = new List<string>()
+                {
+                    "/Job/Stream",
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "JobSegment", JSONType = typeof(JobSegment), Resources = new List<string>()
                 {
                     "/JobSegment/ByKey/{namekey}",
                     "/JobSegment/UpdatedSince?sinceTime={time millis}",
-                    "/JobSegment/Stream",
                     "/JobSegment/History?sinceTime={time millis}",
                     "/JobSegment/History?sinceTime={time millis}&namekey={namekey}",
                     "/JobSegment/ByStatus/{Status}",
                     "/JobSegment/ByJob/{Job}",
                     "/JobSegment/ByRobot/{AMR}",
                     "/JobSegment/ByGoalName/{GoalName}"
-                }},
-
-            {"JobSegmentModify_GET", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "JobSegment", JSONType = typeof(JobSegment), Resources = new List<string>()
+                {
+                    "/JobSegment/Stream",
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "JobSegmentModify", JSONType = typeof(JobSegmentModify), Resources = new List<string>()
                 {
                     "/JobSegmentModify/ByKey/{namekey}",
                     "/JobSegmentModify/History?sinceTime={time millis}",
                     "/JobSegmentModify/BySegmentId/{SegmentID}",
-                }},
-            {"JobSegmentModify_POST", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.POST, TypeName = "JobSegmentModify", JSONType = typeof(JobSegmentModify_POST), Resources = new List<string>()
                 {
                     "/JobSegmentModify",
-                }},
-            {"JobSegmentModify_DELETE", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.DELETE, TypeName = "JobSegmentModify", JSONType = typeof(JobSegmentModify), Resources = new List<string>()
                 {
                     "/JobSegmentModify/{namekey}",
-                }},
-
-            {"JobCancel_GET", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "JobCancel", JSONType = typeof(JobCancel), Resources = new List<string>()
                 {
                     "/JobCancel/ByKey/{namekey}",
                     "/JobCancel/UpdatedSince?sinceTime={time millis}",
-                }},
-            {"JobCancel_POST", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.POST, TypeName = "JobCancel", JSONType = typeof(JobCancel_POST), Resources = new List<string>()
                 {
                     "/JobCancel",
-                }},
-            {"JobCancel_DELETE", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.DELETE, TypeName = "JobCancel", JSONType = typeof(JobCancel), Resources = new List<string>()
                 {
                     "/JobCancel/{namekey}",
-                }},
+                }
+            } },
 
-            {"Robot_GET", new List<string>()
+            { new Command() { Action = Actions.GET, TypeName = "Robot", JSONType = typeof(Robot), Resources = new List<string>()
                 {
                     "/Robot/ByKey/{namekey}",
                     "/Robot/History?sinceTime={time millis}",
@@ -194,8 +256,9 @@ namespace Classes.IntegrationToolkit
                     "/Robot/ByStatus/{Status}",
                     "/Robot/BySubStatus/{SubStatus}",
                     "/Robot/UpdatedSince?sinceTime={time millis}"
-                }},
-            {"RobotFault_GET", new List<string>()
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "RobotFault", JSONType = typeof(RobotFault), Resources = new List<string>()
                 {
                     "/RobotFault/ByKey/{namekey}",
                     "/RobotFault/UpdatedSince?sinceTime={time millis}",
@@ -206,8 +269,21 @@ namespace Classes.IntegrationToolkit
                     "/RobotFault/ByName/{Name}",
                     "/RobotFault/ByActive/{Value}"
                 }
-            }
+            } },
+            { new Command() { Action = Actions.POST, TypeName = "WaitTaskCancel", JSONType = typeof(WaitTaskCancelQuery_POST), Resources = new List<string>()
+                {
+                    "/WaitTaskCancel",
+                }
+            } },
+            { new Command() { Action = Actions.GET, TypeName = "WaitTaskState", JSONType = typeof(WaitTaskStateQuery), Resources = new List<string>()
+                {
+                    "/WaitTaskState/{AMR}",
+                }
+            } }
         };
+
+        private HttpClient HttpClient { get; set; }
+        private Client Client { get; set; }
 
 
         public string UserName => "toolkitadmin";
@@ -218,6 +294,8 @@ namespace Classes.IntegrationToolkit
         public Exception RESTException { get; private set; }
         public bool IsHttpStatus { get; private set; }
         public HttpStatusCode HttpStatusCode { get; private set; }
+
+
         private void Reset()
         {
             RESTException = null;
@@ -225,7 +303,48 @@ namespace Classes.IntegrationToolkit
 
             IsHttpStatus = false;
         }
-        public string Post(string url, string pass, string jSONData)
+
+        private void Testing(string host, string password)
+        {
+            ServicePointManager.ServerCertificateValidationCallback += (sender1, certificate, chain, sslPolicyErrors) => true;
+            byte[] cred = UTF8Encoding.UTF8.GetBytes($"{UserName}:{password}");
+            HttpClient = new HttpClient();
+            HttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(cred));
+
+            Client = new Client(ConnectionString(host), HttpClient);
+
+            List<DataStoreItem> lst = (List<DataStoreItem>)Client.DataStoreItem_POLL_Async("1").Result;
+        }
+        public async Task<string> Post(string url, string pass, string jSONData)
+        {
+            Reset();
+
+
+            try
+            {
+                byte[] cred = UTF8Encoding.UTF8.GetBytes($"{UserName}:{pass}");
+                using HttpClient client = new HttpClient();
+                client.BaseAddress = new System.Uri(url);
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(cred));
+                client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+                HttpContent content = new StringContent(jSONData, UTF8Encoding.UTF8, "application/json");
+
+                return await client.PostAsync(url, content).Result.Content.ReadAsStringAsync();
+            }
+            catch(Exception ex)
+            {
+                RESTException = ex;
+                IsException = true;
+                return string.Empty;
+            }
+            finally
+            {
+                ServicePointManager.ServerCertificateValidationCallback -= (sender1, certificate, chain, sslPolicyErrors) => true;
+            }
+
+        }
+        public async Task<string> Put(string url, string pass, string jSONData)
         {
             Reset();
 
@@ -240,7 +359,7 @@ namespace Classes.IntegrationToolkit
 
                 HttpContent content = new StringContent(jSONData, UTF8Encoding.UTF8, "application/json");
 
-                return client.PostAsync(url, content).Result.Content.ReadAsStringAsync().Result;
+                return await client.PutAsync(url, content).Result.Content.ReadAsStringAsync();
             }
             catch(Exception ex)
             {
@@ -254,7 +373,7 @@ namespace Classes.IntegrationToolkit
             }
 
         }
-        public string Put(string url, string pass, string jSONData)
+        public async Task<string> Delete(string url, string pass)
         {
             Reset();
 
@@ -267,9 +386,8 @@ namespace Classes.IntegrationToolkit
                 client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(cred));
                 client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
-                HttpContent content = new StringContent(jSONData, UTF8Encoding.UTF8, "application/json");
 
-                return client.PutAsync(url, content).Result.Content.ReadAsStringAsync().Result;
+                return await client.DeleteAsync(url).Result.Content.ReadAsStringAsync();
             }
             catch(Exception ex)
             {
@@ -283,7 +401,7 @@ namespace Classes.IntegrationToolkit
             }
 
         }
-        public string Delete(string url, string pass)
+        public async Task<string> Get(string url, string pass)
         {
             Reset();
 
@@ -296,45 +414,23 @@ namespace Classes.IntegrationToolkit
                 client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(cred));
                 client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
+                string res = await client.GetAsync(url).Result.Content.ReadAsStringAsync();
 
-                return client.DeleteAsync(url).Result.Content.ReadAsStringAsync().Result;
-            }
-            catch(Exception ex)
-            {
-                RESTException = ex;
-                IsException = true;
-                return string.Empty;
-            }
-            finally
-            {
-                ServicePointManager.ServerCertificateValidationCallback -= (sender1, certificate, chain, sslPolicyErrors) => true;
-            }
-
-        }
-        public string Get(string url, string pass)
-        {
-            Reset();
-
-            ServicePointManager.ServerCertificateValidationCallback += (sender1, certificate, chain, sslPolicyErrors) => true;
-            try
-            {
-                byte[] cred = UTF8Encoding.UTF8.GetBytes($"{UserName}:{pass}");
-                using HttpClient client = new HttpClient();
-                client.BaseAddress = new System.Uri(url);
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(cred));
-                client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-
-                string res = client.GetAsync(url).Result.Content.ReadAsStringAsync().Result;
-
-                if(res.StartsWith("<html>"))
+                if(!res.StartsWith("["))
                 {
-                    Match match = Regex.Match(res, @"(?:<h1>)[0-9]+");
-                    if(match.Success)
+                    if(res.StartsWith("<html>"))
                     {
-                        IsHttpStatus = true;
-                        HttpStatusCode = (HttpStatusCode)Enum.Parse(typeof(HttpStatusCode), match.Value.Replace("<h1>", ""));
+                        Match match = Regex.Match(res, @"(?:<h1>)[0-9]+");
+                        if(match.Success)
+                        {
+                            IsHttpStatus = true;
+                            HttpStatusCode = (HttpStatusCode)Enum.Parse(typeof(HttpStatusCode), match.Value.Replace("<h1>", ""));
+                        }
                     }
+                    else
+                        throw new Exception(res);
                 }
+
 
                 return res;
             }
@@ -349,7 +445,7 @@ namespace Classes.IntegrationToolkit
                 ServicePointManager.ServerCertificateValidationCallback -= (sender1, certificate, chain, sslPolicyErrors) => true;
             }
         }
-        public Stream Stream(string url, string pass)
+        public async Task<Stream> Stream(string url, string pass)
         {
             Reset();
 
@@ -363,7 +459,7 @@ namespace Classes.IntegrationToolkit
                 client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream"));
 
 
-                return client.GetStreamAsync(url).Result;
+                return await client.GetStreamAsync(url);
             }
             catch(Exception ex)
             {
